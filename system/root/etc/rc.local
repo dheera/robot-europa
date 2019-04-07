@@ -11,7 +11,10 @@
 #
 # By default this script does nothing.
 screen -d -m /home/nvidia/bin/wifi-powersave-loop
-sudo modprobe mttcan can can_gw can_bcm can_raw can_dev slcan vcan
-sudo ip link set can0 up type can bitrate 500000
+modprobe mttcan can can_gw can_bcm can_raw can_dev slcan vcan
+sleep 2
+ip link set can0 up type can bitrate 500000
+
+echo 3 > /proc/irq/428/smp_affinity
 
 exit 0
