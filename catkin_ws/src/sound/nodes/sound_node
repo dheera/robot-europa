@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import os
+import rospy
+import subprocess
+import sys
+import time
+
+from rosgraph_msgs.msg import Log
+from std_msgs.msg import String
+
+def on_rosout(msg):
+    if msg.level == 4:
+        speak("warning: %s" % msg.msg)
+
+    if msg.level == 8:
+        speak("error: %s" % msg.msg)
+
+    if msg.level == 16:
+        speak("critical: %s" % msg.msg)
+
+def on_speak(msg):
+    speak(msg.data)
+
+def speak(text):
+    subprocess.call([speak_command, text])
+
+if __name__ == "__main__":
+    rospy.init_node("sound_node")
+
+    rospy.loginfo("init")
+
+    speak_command = rospy.get_param("speak_command", "espeak")
+
+    sub_speak = rospy.Subscriber("speak", String, on_speak)
+    sub_rosout = rospy.Subscriber("/rosout_agg", Log, on_rosout)
+
+    rospy.loginfo("spin")
+
+    rospy.spin()
+
+    rospy.loginfo("shutdown")
