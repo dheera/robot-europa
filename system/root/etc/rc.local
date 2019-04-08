@@ -11,6 +11,8 @@
 #
 # By default this script does nothing.
 screen -d -m /home/nvidia/bin/wifi-powersave-loop
+screen -d -m /home/nvidia/bin/jetson-clocks
+
 modprobe mttcan can can_gw can_bcm can_raw can_dev slcan vcan
 sleep 2
 ip link set can0 up type can bitrate 500000

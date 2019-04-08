@@ -5,7 +5,7 @@ After=syslog.target network.target
 [Service]
 Type=simple
 User=nvidia
-ExecStart=/bin/bash -c "AUTOSSH_GATETIME=0 AUTOSSH_LOGFILE=/home/nvidia/.autossh.log autossh -f -N -o ServerAliveCountMax=2 -o ServerAliveInterval=5 -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o ConnectTimeout=5 -o BatchMode=yes -R 2222:localhost:22 robot@robot.dheera.net"
+ExecStart=/bin/bash -c "AUTOSSH_GATETIME=0 AUTOSSH_LOGFILE=/home/nvidia/.autossh.log autossh -f -N -o ServerAliveCountMax=2 -o ServerAliveInterval=5 -o PubkeyAuthentication=yes -o PasswordAuthentication=no -o ConnectTimeout=5 -o BatchMode=yes -R 2222:localhost:22 dheera@relay.dheera.net"
 Restart=always
 RestartSec=5
 

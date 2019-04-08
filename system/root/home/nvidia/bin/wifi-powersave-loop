@@ -1,0 +1,11 @@
+#!/bin/bash
+
+while :
+do
+    echo 255 > /sys/kernel/debug/tegra_fan/target_pwm 
+    /sbin/iw dev wlan0 set power_save on
+    /sbin/iw dev wlan0 set power_save off
+    echo -e "nameserver 8.8.8.8\nnameserver 8.8.4.4\n" > /etc/resolv.conf
+    sleep 20
+done
+
