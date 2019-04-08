@@ -1,0 +1,8 @@
+#!/bin/bash
+
+sleep 60
+
+nvpmodel -m 0
+echo 2 > /proc/irq/428/smp_affinity
+/home/nvidia/jetson_clocks.sh
+
