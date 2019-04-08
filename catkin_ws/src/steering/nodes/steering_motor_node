@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+# Applies torque to the steering wheel.
+
+import rospy
+import serial
+import time
+
+from std_msgs.msg import Int16, UInt8, Float32
+from roboteq_steering import RoboteqSteering
+
+def on_command(msg):
+    global rs
+    rs.command(msg.data)
+
+if __name__ == "__main__":
+    rospy.init_node('steering_motor_node')
+
+    rospy.loginfo("init")
+
+    param_device = rospy.get_param("~device", "/dev/roboteq0")
+    param_baudrate = rospy.get_param("~baudrate", 115200)
+
+    sub_command = rospy.Subscriber("command", Int16, on_command)
+    pub_current = rospy.Publisher("current", Float32, queue_size = 1)
+    pub_voltage = rospy.Publisher("voltage", Float32, queue_size = 1)
+    pub_temperature = rospy.Publisher("temperature", Float32, queue_size = 1)
+    pub_flags_fault = rospy.Publisher("flags_fault", UInt8, queue_size = 1)
+    pub_flags_runtime = rospy.Publisher("flags_runtime", UInt8, queue_size = 1)
+    pub_flags_system = rospy.Publisher("flags_system", UInt8, queue_size = 1)
+
+    rospy.loginfo("connect")
+
+    rs = RoboteqSteering(device = param_device, baudrate = param_baudrate, \
+        logerr = rospy.logerr)
+
+    rospy.loginfo("spin")
+
+    rospy.spin()
+
+    rospy.loginfo("shutdown")
