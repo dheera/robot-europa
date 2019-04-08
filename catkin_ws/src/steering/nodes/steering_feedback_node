@@ -50,8 +50,13 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         rate.sleep()
         t = time.time()
-        if t - last_angle_time > 0.25:
+
+        if t - last_angle_time > 0.2:
             rospy.logwarn_throttle(4, "no steering angle data")
+            continue
+
+        if t - last_angle_time > 0.2:
+            rospy.logwarn_throttle(4, "no steering target data")
             continue
 
         feedback.target = target
