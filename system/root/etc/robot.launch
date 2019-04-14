@@ -1,0 +1,34 @@
+<launch>
+    <node ns="vehicle" name="ford_can_node" pkg="ford_can" type="ford_can_node" respawn="true" respawn_delay="2">
+    </node>
+
+    <node ns="system" name="system_stats_node" pkg="system_stats" type="system_stats_node" respawn="true" respawn_delay="2">
+    </node>
+
+    <node name="camera" type="usb_cam_node" pkg="usb_cam">
+      <rosparam>
+        video_device: /dev/video0
+        pixel_format: yuyv
+        image_width: 640
+        image_height: 480
+        framerate: 30
+      </rosparam>
+    </node>
+
+    <node name="camera_t" type="throttle" pkg="topic_tools" args="messages /camera/image_raw 2 /camera_t/image_raw">
+    </node>
+
+<!--
+    <node respawn="true" respawn_delay="2" name="nmea_serial_driver" pkg="nmea_navsat_driver" type="nmea_serial_driver">
+    </node>
+-->
+
+  <node pkg="ublox_gps" type="ublox_gps" name="gps"
+        output="screen" 
+        clear_params="true"
+        respawn="true" 
+        respawn_delay="2">
+    <rosparam command="load" file="$(find ublox_gps)/config/basic.yaml" />
+  </node>
+
+</launch>
