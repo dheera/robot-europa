@@ -7,3 +7,6 @@
 [submodule "catkin_ws/src/ublox"]
 	path = catkin_ws/src/ublox
 	url = http://github.com/flynneva/ublox
+[submodule "catkin_ws/src/ros-road-segmentation"]
+	path = catkin_ws/src/ros-road-segmentation
+	url = https://github.com/dheera/ros-road-segmentation
