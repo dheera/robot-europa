@@ -5,7 +5,7 @@
     <node ns="system" name="system_stats_node" pkg="system_stats" type="system_stats_node" respawn="true" respawn_delay="2">
     </node>
 
-    <node name="camera" type="usb_cam_node" pkg="usb_cam">
+    <node name="camera" type="usb_cam_node" pkg="usb_cam" respawn="true" respawn_delay="2">
       <rosparam>
         video_device: /dev/video0
         pixel_format: yuyv
