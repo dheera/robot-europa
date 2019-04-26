@@ -1,0 +1,2 @@
+#!/bin/bash
+rosbag record --split --duration=1m /camera_t/image_raw /gps/fix /gps/time_reference /gps/vel /vehicle/accelerator_fraction /vehicle/brake_pressure /vehicle/gps/fix /vehicle/ignition_switch /vehicle/rpm /vehicle/speed /vehicle/steering_wheel_angle /vehicle/total_distance /steering/command /steering/current /steering/flags_fault /steering/flags_runtime /steering/flags_system /steering/voltage /steering/temperature
