@@ -1,5 +1,6 @@
 import serial
 import time
+import threading
 
 class RoboteqSteering(object):
     def __init__(self, device = '/dev/roboteq0', baudrate = 115200, logerr = lambda x: print(x)):
@@ -14,14 +15,14 @@ class RoboteqSteering(object):
             exit(1)
 
         self.thread_read_loop = threading.Thread(target = self._read_loop, daemon = True)
-        thread_read_loop.start()
+        self.thread_read_loop.start()
 
     def __del__(self):
-        if self.ser and self.ser.is_open():
+        if self.ser and self.ser.is_open:
             self.ser.close()
 
     def _write(self, command_string):
-        if not ser.is_open():
+        if not self.ser.is_open:
             self.logerr("exiting: serial port closed")
             exit(1)
         try:
