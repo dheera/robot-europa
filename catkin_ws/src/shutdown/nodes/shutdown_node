@@ -9,12 +9,9 @@ from std_msgs.msg import String, Int8
 
 def on_ignition_switch(msg):
     if msg.data <= 2:
-        m = String()
-        m.data = "vehicle turned off. shutting down now."
-        rospy.logwarn("[shutdown] vehicle turned off")
-        pub_speak.publish(m)
+        rospy.logwarn("vehicle turned off, shutting down")
         time.sleep(10)
-        os.system("sudo shutdown -h now")
+        os.system("shutdown -h now")
 
 if __name__ == "__main__":
     rospy.init_node('shutdown_node')
