@@ -1,4 +1,12 @@
 <launch>
+
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
+    <node name="web_video_server" pkg="web_video_server" type="web_video_server">
+    </node>
+
+    <node ns="steering" name="steering_motor_node" pkg="steering" type="steering_motor_node" respawn="true" respawn_delay="2">
+    </node>
+
     <node ns="vehicle" name="ford_can_node" pkg="ford_can" type="ford_can_node" respawn="true" respawn_delay="2">
     </node>
 
@@ -30,5 +38,11 @@
         respawn_delay="2">
     <rosparam command="load" file="$(find ublox_gps)/config/basic.yaml" />
   </node>
+
+    <node ns="sound" name="sound_node" pkg="sound" type="sound_node" respawn="true" respawn_delay="2">
+    </node>
+
+    <node ns="shutdown" name="shutdown_node" pkg="shutdown" type="shutdown_node" respawn="true" respawn_delay="2">
+    </node>
 
 </launch>
