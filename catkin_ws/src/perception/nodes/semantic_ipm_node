@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+
+import json
+import numpy as np
+import os
+import rospy
+import time
+
+class SemanticIPMActivity(object):
+    def __init__(self, topic_odom = None, camera_profile = None, map_size = 512, map_scale = 0.5):
+        self.sub_odom = rospy.Subscriber(topic_odom, Odometry, self.on_odom)
+        self.cameras = {}
+
+        for camera in camera_profile:
+            self.cameras[camera["name"]] = camera.copy()
+            self.cameras[camera["name"]]["sub_image"] = \
+                rospy.Subscriber(camera["namespace"] + "/image_raw", Image, self.on_image, (camera["name"]))
+            self.cameras[camera["name"]]["last_image"] = None
+
+        self.map_size = map_size # pixels
+        self.map_scale = map_scale # meters per pixel
+        self.map_bins = np.zeros((self.map_size, self.map_size, 3), dtype = np.uint8)
+        self.map = np.zeros((self.map_size, self.map_size), dtype = np.uint8)
+
+        self.map_offset_x = -self.map_scale * self.map_size / 2.0
+        self.map_offset_y = -self.map_scale * self.map_size / 2.0
+
+        self.pose_x = 0.0 # meters
+        self.pose_y = 0.0 # meters
+        self.pose_yaw = 0.0 # radians
+
+    def __del__(self):
+        pass
+
+    def on_odom(self, msg):
+        print("on_odom")
+
+    def on_image(self, msg, camera_name):
+        self.cameras[camera_name]["last_image"] = msg
+
+    def spin_once(self):
+        pass
+
+if __name__ == "__main__":
+    rospy.init_node('semantic_ipm_node')
+    rospy.loginfo("init")
+
+    CAMERA_PROFILE = rospy.get_param("~camera_profile", "default")
+
+    with open("camera_profiles/%s.json" % CAMERA_PROFILE, "r") as f:
+        camera_profile = json.loads(f.read())
+
+    activity = SemanticIPMActivity(
+        topic_odom = rospy.get_param("~topic_odom", "/vehicle/odom"),
+        topic_local_map = rospy.get_param("~topic_local_map", "local_map"),
+        topic_local_map_image = rospy.get_param("~topic_local_map_image", "local_map_image"),
+        camera_profile = camera_profile,
+    )
+
+    rate = rospy.Rate(10.0)
+
+    while not rospy.is_shutdown():
+        rate.sleep()
+        activity.spin_once()
+
+    rospy.loginfo("shutdown")
