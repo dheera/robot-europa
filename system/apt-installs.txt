@@ -1,2 +1,6 @@
 python3-rospkg-modules
 python3-catkin-pkg-modules
+screen
+npm
+nodejs
+
