@@ -2,7 +2,7 @@
 <package>
   <name>sound</name>
   <version>1.0.0</version>
-  <description></description>
+  <description>sound</description>
   <maintainer email="dheera@dheera.net">dheera</maintainer>
   <license>MIT</license>
   <buildtool_depend>catkin</buildtool_depend>

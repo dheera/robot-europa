@@ -1,0 +1,39 @@
+debug: 1
+
+device: /dev/gps0
+frame_id: gps
+dynamic_model: portable
+fix_mode: auto
+dr_limit: 0
+enable_ppp: false
+
+# Measurement rate;
+rate: 4
+nav_rate: 1
+
+# Configure baud_rate
+uart1:
+  baudrate: 9600
+  in: 1
+
+dat:
+  set: false
+
+# Configure satellite constellations to use
+gnss:
+  gps: true
+  glonass: true
+  beidou: false
+  qzss: false
+  sbas: false
+
+save_on_shutdown: true
+
+inf:
+  all: true
+
+# Subsribe to all messages except AID
+subscribe:
+  all: true
+  aid:
+    all: false
