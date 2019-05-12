@@ -924,7 +924,7 @@ difference() {
     cylinder(d=20,h=15,$fn=128);
 }
 
-translate([0,0,4.5])
+translate([0,0,4.4])
 difference() {
     foo();
 }
