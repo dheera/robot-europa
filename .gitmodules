@@ -5,7 +5,7 @@
 	path = catkin_ws/src/ros-ford-can
 	url = http://github.com/dheera/ros-ford-can
 [submodule "catkin_ws/src/ros-road-segmentation"]
-	path = catkin_ws/src/ros-road-segmentation
+	path = catkin_ws/src/ros-semantic-segmentation
 	url = https://github.com/dheera/ros-road-segmentation
 [submodule "catkin_ws/src/ros-imu-bno055"]
 	path = catkin_ws/src/ros-imu-bno055
