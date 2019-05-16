@@ -2,6 +2,7 @@ import math
 import functools
 import json
 import numpy as np
+import numpy_extra as npe
 import os
 
 from scipy.interpolate import griddata
@@ -32,13 +33,14 @@ class IPM(object):
         index_h = np.arange(0, shape[1], dtype = np.uint16) # horizontal indexes
         index_v = np.arange(0, shape[0], dtype = np.uint16) # vertical indexes
         grid_h, grid_v = np.meshgrid(index_h, index_v)
-        tilt = 0.0
-        hfov = 118 * 3.141592653589/180.0
-        vfov = hfov / self.camera["aspect_ratio"]
+        tilt = self.camera["rotation"][1]
+        yaw = self.camera["rotation"][2]
+        hfov = self.camera["hfov"] * 3.141592653589/180.0
+        vfov = self.camera["vfov"] * 3.141592653589/180.0
         camera_height = 1.5
 
-        theta = - np.arctan(2*(grid_h/shape[1] - 0.5) * np.tan(hfov/2)) * math.cos(tilt)
-        phi = np.arctan(2*(grid_v/shape[0] - 0.5) * np.tan(vfov/2))
+        theta = - np.arctan(2*(grid_h/shape[1] - 0.5 - yaw/vfov/2) * np.tan(hfov/2)) * math.cos(tilt)
+        phi = np.arctan(2*(grid_v/shape[0] - 0.5 + tilt/vfov/2) * np.tan(vfov/2))
         r = np.tan(3.14159265358979/2 - phi) * camera_height
 
         return r, theta
