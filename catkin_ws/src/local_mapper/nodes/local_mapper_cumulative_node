@@ -38,8 +38,8 @@ class LocalMapperNode(object):
 
         # publishers
 
-        self.pub_grid = rospy.Publisher("grid", OccupancyGrid, queue_size = 1)
-        self.pub_image = rospy.Publisher("image", Image, queue_size = 1)
+        self.pub_grid = rospy.Publisher("semantic_grid", OccupancyGrid, queue_size = 1)
+        self.pub_image = rospy.Publisher("semantic_image", Image, queue_size = 1)
 
         # subscribers
 
