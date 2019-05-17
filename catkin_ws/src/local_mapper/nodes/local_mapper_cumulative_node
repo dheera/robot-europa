@@ -172,8 +172,8 @@ class LocalMapperNode(object):
             msg_grid.info.resolution = float(1.0/self.pixels_per_meter)
             msg_grid.info.width = int(self.local_map.shape[1])
             msg_grid.info.height = int(self.local_map.shape[0])
-            msg_grid.info.origin.position.x = float(cur_x + self.local_map.shape[1]/self.pixels_per_meter/2.0)
-            msg_grid.info.origin.position.y = float(cur_x + self.local_map.shape[0]/self.pixels_per_meter/2.0)
+            msg_grid.info.origin.position.x = float(self.cur_x + self.local_map.shape[1]/self.pixels_per_meter/2.0)
+            msg_grid.info.origin.position.y = float(self.cur_y + self.local_map.shape[0]/self.pixels_per_meter/2.0)
             q = quaternion_from_euler(0.0, 0.0, self.cur_yaw)
             msg_grid.info.origin.orientation.w = q[0]
             msg_grid.info.origin.orientation.x = q[1]
