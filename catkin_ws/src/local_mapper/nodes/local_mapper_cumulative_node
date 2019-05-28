@@ -185,7 +185,6 @@ class LocalMapperNode(object):
         if self.pub_image.get_num_connections() > 0:
             py = int(self.cur_y * self.pixels_per_meter + self.local_map.shape[0] / 2)
             px = int(self.cur_x * self.pixels_per_meter + self.local_map.shape[1] / 2)
-            self.local_map_flat[py-1:py+2,px-1:px+2] = len(self.categories)
 
             msg_image = cv2_to_imgmsg(self.color_map[self.local_map_flat[::-1,:]], encoding = "bgr8")
             self.pub_image.publish(msg_image)
@@ -193,7 +192,6 @@ class LocalMapperNode(object):
         if DEBUG:
             py = int(self.cur_y * self.pixels_per_meter + self.local_map.shape[0] / 2)
             px = int(self.cur_x * self.pixels_per_meter + self.local_map.shape[1] / 2)
-            self.local_map_flat[py-1:py+2,px-1:px+2] = len(self.categories)
 
             cv2.imshow('local_map', self.color_map[self.local_map_flat[::-1,:]])
             cv2.waitKey(1)

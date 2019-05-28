@@ -18,29 +18,60 @@ if DEBUG:
 class AutopilotNode(object):
     def __init__(self,
         ns_camera = "/camera_front",
+        ns_vehicle = "/vehicle",
         node_name = "autopilot_node",
     ):
         rospy.init_node(node_name)
 
         self.is_initialized = False
-
         self.local_map_flat = None
+        self.last_angle = None
+        self.plan_inverse_radius = 0.0
+        self.plan_time = 0.0
 
-        self.sub_grid = rospy.Subscriber("semantic_grid", OccupancyGrid, self.on_grid, queue_size = 1)
+        # parameters
 
-        # fetch semantic category information
+        self.param_steering_factor = rospy.get_param("~steering_factor", 2000.0) # degrees per inverse meter
+            # e.g. 2000.0 means:
+            # 2 degrees for 1000 m turning radius
+            # 20 degrees for 100 m turning radius
+            # 200 degrees for 10 m turning radius
+
         while not rospy.has_param("%s/semantic_categories" % ns_camera):
             rospy.loginfo_throttle(10, "waiting for categories")
             rospy.sleep(1)
         self.categories = rospy.get_param("%s/semantic_categories" % ns_camera)
 
+        # publishers
+
+        self.pub_steering_wheel_target = rospy.Publisher(
+            "%s/steering_wheel_target" % ns_vehicle,
+            Float32, queue_size = 1
+        )
+
+        # subscribers
+
+        self.sub_grid = rospy.Subscriber(
+            "semantic_grid",
+            OccupancyGrid, self.on_grid, queue_size = 1
+        )
+        self.sub_steering_wheel_angle = rospy.Subscriber(
+            "%s/steering_wheel_angle" % ns_vehicle,
+            Float32, self.on_steering_wheel_angle, queue_size = 1
+        )
+
         # color map for visualization
         # one color for each category plus the final [255,255,255] is a fake
         # category to display white-colored overlays
-        self.color_map = np.array([list(reversed(c["color"])) for c in self.categories] + [[255,255,255]],
-            dtype=np.uint8)
+        self.color_map = np.array(
+            [list(reversed(c["color"])) for c in self.categories] + [[255,255,255]],
+            dtype=np.uint8
+        )
 
         self.is_initialized = True
+
+    def on_steering_wheel_angle(self, msg):
+        self.last_angle = msg.data
 
     def on_grid(self, msg):
         self.local_map_flat = np.fromstring(bytes(msg.data), np.int8).reshape((msg.info.height, msg.info.width))
@@ -56,6 +87,13 @@ class AutopilotNode(object):
              msg.info.origin.orientation.z,
         ))
 
+    def plan(self):
+        for inverse_radius in np.linspace(-0.05, 0.05, 25):
+            pass
+
+        self.plan_inverse_radius = 0.0
+        self.plan_time = time.time()
+
     def spin(self):
         rate = rospy.Rate(50)
         seq = 0
@@ -68,9 +106,17 @@ class AutopilotNode(object):
             if self.local_map_flat is None:
                 continue
 
+            self.plan()
+
+            if time.time() - self.plan_time > 0.5:
+                rospy.logwarn("planner did not update")
+                continue
+
             display_image = self.local_map_flat.copy()
 
-            scale = np.linspace(0.0, 50.0 * self.pixels_per_meter, 50 * self.pixels_per_meter)
+            # plot current vehicle direction
+            scale = np.linspace(0.0, 200.0, 100)
+            dscale = np.diff(scale)
             x = scale * np.cos(self.local_map_yaw)
             y = scale * np.sin(self.local_map_yaw)
             offsets_x = (x * self.pixels_per_meter + self.local_map_offset_x * self.pixels_per_meter).astype(np.uint16)
@@ -80,6 +126,31 @@ class AutopilotNode(object):
             offsets_x = offsets_x[where_valid]
             offsets_y = offsets_y[where_valid]
             display_image[offsets_y, offsets_x] = len(self.categories)
+
+            # plot steering target
+            scale = np.linspace(0.0, 200.0, 100)
+            dscale = np.diff(scale)
+            angles = self.local_map_yaw + np.arange(scale.shape[0]) * 0.01
+            dx = dscale * np.cos(angles)
+            dy = dscale * np.sin(angles)
+            x = np.cumsum(dx)
+            y = np.cumsum(dy)
+            offsets_x = (x * self.pixels_per_meter + self.local_map_offset_x * self.pixels_per_meter).astype(np.uint16)
+            offsets_y = (y * self.pixels_per_meter + self.local_map_offset_y * self.pixels_per_meter).astype(np.uint16)
+            where_valid = (offsets_x >= 0) & (offsets_x < self.local_map_flat.shape[0]) & \
+                      (offsets_y >= 0) & (offsets_y < self.local_map_flat.shape[0])
+            offsets_x = offsets_x[where_valid]
+            offsets_y = offsets_y[where_valid]
+            display_image[offsets_y, offsets_x] = len(self.categories)
+
+            # plot current location
+
+            px = int(self.local_map_offset_x * self.pixels_per_meter)
+            py = int(self.local_map_offset_y * self.pixels_per_meter)
+            display_image[py-2:py+3,px-2:px+3] = len(self.categories)
+
+            # colorize map
+
             display_image_color = self.color_map[display_image[::-1, :]]
 
             if DEBUG:
