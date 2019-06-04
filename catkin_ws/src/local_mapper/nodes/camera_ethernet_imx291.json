@@ -1,8 +1,9 @@
 {
   "name": "IMX291 ethernet camera",
   "aspect_ratio": 1.7777777777777,
-  "rotation": [0, -0.2, 0.1],
+  "rotation": [0, -0.19, 0.0],
   "hfov": 112.0,
   "vfov": 69.0,
+  "height": 1.26,
   "projection": "rectilinear"
 }

@@ -74,6 +74,8 @@ class GroundProjectNode(object):
         cutoff_top = int(img.shape[0] * 0.4)
         cutoff_bottom = int(img.shape[0] * 0.8)
 
+        #cv2.imshow('gr', self.ground_plane_r / 100)
+
         img = img[cutoff_top:cutoff_bottom,:]
         ground_plane_r = self.ground_plane_r[cutoff_top:cutoff_bottom,:]
         ground_plane_theta = self.ground_plane_theta[cutoff_top:cutoff_bottom,:]
@@ -91,7 +93,7 @@ class GroundProjectNode(object):
         values_px = values_px[where_valid]
         img = img[where_valid]
 
-        self.local_map[values_py, values_px, :] = (self.local_map[values_py, values_px, :] + img) / 2
+        self.local_map[values_py, values_px, :] = img / 2 # (self.local_map[values_py, values_px, :] + img) / 2
 
         self.lock.release()
 

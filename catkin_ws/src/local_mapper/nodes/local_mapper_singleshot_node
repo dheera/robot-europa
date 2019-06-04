@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import cv2
 import numpy as np
 import numpy_extra as npe
 import rospy
@@ -15,13 +14,33 @@ from std_msgs.msg import *
 from nav_msgs.msg import *
 from geometry_msgs.msg import *
 
+DEBUG = "--debug" in sys.argv
+
+if DEBUG:
+    import cv2 # for imshow
+
 class LocalMapper(object):
     def __init__(self,
-      ns_camera = "/camera_front", ns_imu = "/imu", ns_vehicle = "/vehicle", pixels_per_meter = 8.0,
-      configuration = "camera_ethernet_imx291"):
-        rospy.init_node("local_mapper_node")
+      node_name = "local_mapper_node",
+      ns_camera = "/camera_front",
+      ns_imu = "/imu",
+      ns_vehicle = "/vehicle",
+      pixels_per_meter = 8.0,
+      configuration = "camera_ethernet_imx291"
+    ):
+        self.is_initialized = False
+        rospy.init_node(node_name)
+
+        # parameters
 
         self.pixels_per_meter = pixels_per_meter
+
+        # publishers
+
+        self.pub_grid = rospy.Publisher("semantic_grid", OccupancyGrid, queue_size = 1)
+        self.pub_image = rospy.Publisher("semantic_image", Image, queue_size = 1)
+
+        # subscribers
 
         self.sub_semantic = rospy.Subscriber(
             "%s/semantic" % ns_camera, Image, self.on_semantic)
@@ -41,7 +60,11 @@ class LocalMapper(object):
 
         self.color_map = np.array([list(reversed(c["color"])) for c in self.categories] + [[255,255,255]],
             dtype=np.uint8) # last is a visualization "category"
+
         self.local_map = np.zeros((1024, 1024, len(self.categories)))
+
+        # argmaxed version of above
+        self.local_map_flat = np.zeros((1024, 1024), dtype = np.uint8)
 
         self.map_center_x = 0.0
         self.map_center_y = 0.0
@@ -98,20 +121,40 @@ class LocalMapper(object):
             semantic_weights[logits],
         )
 
-#                np.add.at(self.local_map,
-#            (offsets_y, offsets_x, semantic),
-#            self.semantic.weights[semantic]
-#        )
+        self.local_map_flat = np.argmax(self.local_map, axis=2).astype(np.uint8)
 
-        self.local_map_flat = np.argmax(self.local_map, axis=2)
+        if self.pub_grid.get_num_connections() > 0:
+            msg_grid = OccupancyGrid()
+            msg_grid.header.frame_id = "base_link"
+            msg_grid.info.map_load_time = rospy.get_rostime()
+            msg_grid.info.resolution = float(1.0/self.pixels_per_meter)
+            msg_grid.info.width = int(self.local_map.shape[1])
+            msg_grid.info.height = int(self.local_map.shape[0])
+            msg_grid.info.origin.position.x = float(self.cur_x + self.local_map.shape[1]/self.pixels_per_meter/2.0)
+            msg_grid.info.origin.position.y = float(self.cur_y + self.local_map.shape[0]/self.pixels_per_meter/2.0)
+            q = quaternion_from_euler(0.0, 0.0, self.cur_yaw)
+            msg_grid.info.origin.orientation.w = q[0]
+            msg_grid.info.origin.orientation.x = q[1]
+            msg_grid.info.origin.orientation.y = q[2]
+            msg_grid.info.origin.orientation.z = q[3]
+            msg_grid.data = np.ascontiguousarray(self.local_map_flat).tostring()
+            self.pub_grid.publish(msg_grid)
+
+        if self.pub_image.get_num_connections() > 0:
+            py = int(self.cur_y * self.pixels_per_meter + self.local_map.shape[0] / 2)
+            px = int(self.cur_x * self.pixels_per_meter + self.local_map.shape[1] / 2)
+
+            msg_image = cv2_to_imgmsg(self.color_map[self.local_map_flat[::-1,:]], encoding = "bgr8")
+            self.pub_image.publish(msg_image)
+
+        if DEBUG:
+            py = int(self.cur_y * self.pixels_per_meter + self.local_map.shape[0] / 2)
+            px = int(self.cur_x * self.pixels_per_meter + self.local_map.shape[1] / 2)
+
+            cv2.imshow('local_map', self.color_map[self.local_map_flat[::-1,:]])
+            cv2.waitKey(1)
+
         self.lock.release()
-
-        py = int(self.cur_y * self.pixels_per_meter + self.local_map.shape[0] / 2)
-        px = int(self.cur_x * self.pixels_per_meter + self.local_map.shape[1] / 2)
-        self.local_map_flat[py-1:py+2,px-1:px+2] = len(self.categories)
-        cv2.imshow('local_map', self.color_map[self.local_map_flat[::-1,:]])
-        #cv2.imshow('local_map', self.ground_plane_r / 30)
-        cv2.waitKey(1)
 
     def publish(self):
         pass

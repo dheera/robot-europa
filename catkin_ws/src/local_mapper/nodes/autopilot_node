@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import itertools
 import numpy as np
 import rospy
 import sys
 import time
 
 from transformations import euler_from_quaternion, quaternion_from_euler
+from cv_bridge import *
 from sensor_msgs.msg import *
 from std_msgs.msg import *
 from nav_msgs.msg import *
@@ -15,6 +17,16 @@ DEBUG = "--debug" in sys.argv
 
 if DEBUG:
     import cv2
+
+def circular_mask(d):
+    Y = np.zeros((d,d), dtype=np.float32)
+    for i in range(d):
+        for j in range(d):
+            Y[i, j] = i
+    X = Y.T
+    dist_from_center = np.sqrt((X - (d-1)/2)**2 + (Y - (d-1)/2)**2)
+    mask = dist_from_center <= (d)/2
+    return mask
 
 class AutopilotNode(object):
     def __init__(self,
@@ -26,9 +38,14 @@ class AutopilotNode(object):
 
         self.is_initialized = False
         self.local_map_flat = None
+        self.local_map_yaw = None
         self.last_angle = 0.0
         self.plan_inverse_radius = 0.0
         self.plan_time = 0.0
+        self.vehicle_width = 4.0 # m
+        self.mask = None
+        self.mask_bool = None
+        self.mask_half_dim = 1
 
         # parameters
 
@@ -48,6 +65,11 @@ class AutopilotNode(object):
         self.pub_steering_wheel_target = rospy.Publisher(
             "%s/steering_wheel_target" % ns_vehicle,
             Float32, queue_size = 1
+        )
+
+        self.pub_image = rospy.Publisher(
+            "/autopilot_image",
+            Image, queue_size = 1
         )
 
         # subscribers
@@ -77,6 +99,14 @@ class AutopilotNode(object):
     def on_grid(self, msg):
         self.local_map_flat = np.fromstring(bytes(msg.data), np.int8).reshape((msg.info.height, msg.info.width))
         self.pixels_per_meter = 1/msg.info.resolution
+        if self.mask is None:
+            mask_dim = int(self.pixels_per_meter * self.vehicle_width)
+            if mask_dim % 2 == 0:
+                mask_dim += 1
+            self.mask = circular_mask(int(self.pixels_per_meter * self.vehicle_width))
+            self.mask_bool = self.mask > 0.0
+            self.mask_half_dim = int(self.mask.shape[0] / 2)
+
         self.local_map_offset_x = msg.info.origin.position.x
         self.local_map_offset_y = msg.info.origin.position.y
         self.local_map_offset_px = int(msg.info.origin.position.x * self.pixels_per_meter)
@@ -89,35 +119,71 @@ class AutopilotNode(object):
         ))
 
     def plan(self):
-        max_score = -1
-        max_inverse_radius = 0.0
+        if self.local_map_yaw is None:
+            return
+
+        max_score = 0.0
+        max_inverse_radius = self.last_angle / self.param_steering_factor
         max_path_categories = []
 
-        scale = np.linspace(0.0, 100.0, 200)
+        scale = np.linspace(0.0, 100.0, 25)
         dscale = np.diff(scale)
 
         for inverse_radius in np.linspace(-0.01, 0.01, 100):
             angles = self.local_map_yaw + np.arange(scale.shape[0]) * dscale[0] * inverse_radius
             dx = dscale * np.cos(angles[1:])
             dy = dscale * np.sin(angles[1:])
-            x = np.cumsum(dx)
-            y = np.cumsum(dy)
-            x = np.hstack((x-2, x-1, x, x+1, x+2))
-            y = np.hstack((y-2, y-1, y, y+1, y+2))
-            offsets_x = (x * self.pixels_per_meter + self.local_map_offset_x * self.pixels_per_meter).astype(np.uint16)
-            offsets_y = (y * self.pixels_per_meter + self.local_map_offset_y * self.pixels_per_meter).astype(np.uint16)
-            where_valid = (offsets_x >= 0) & (offsets_x < self.local_map_flat.shape[0]) & \
-                      (offsets_y >= 0) & (offsets_y < self.local_map_flat.shape[0])
-            offsets_x = offsets_x[where_valid]
-            offsets_y = offsets_y[where_valid]
-            path_categories = self.local_map_flat[offsets_y, offsets_x]
-            score = np.sum((path_categories == 1).astype(np.float32)) * (1 - abs(inverse_radius)) / (1 + np.sum(path_categories == 2))
+            xs = np.cumsum(dx)
+            ys = np.cumsum(dy)
+
+            score = 0
+            dist = 0
+            boo = 0
+            for i, x, y in zip(range(len(xs)), xs, ys):
+                center_x = (x * self.pixels_per_meter + self.local_map_offset_x * self.pixels_per_meter).astype(np.uint16)
+                center_y = (y * self.pixels_per_meter + self.local_map_offset_y * self.pixels_per_meter).astype(np.uint16)
+                if center_y - self.mask_half_dim > 0 and \
+                    center_x - self.mask_half_dim > 0 and \
+                    center_y + self.mask_half_dim < self.local_map_flat.shape[0] and \
+                    center_x + self.mask_half_dim < self.local_map_flat.shape[1]:
+                    map_sub = self.local_map_flat[
+                        center_y - self.mask_half_dim : center_y + self.mask_half_dim,
+                        center_x - self.mask_half_dim : center_x + self.mask_half_dim
+                    ]
+
+                    score_A = np.sum((map_sub == 1) & self.mask_bool)
+                    score_B = np.sum((map_sub == 2) & self.mask_bool)
+                    score += np.sqrt(i) * (score_A - 2 * score_B)
+                    if score_A > 0:
+                        dist = i
+                    else:
+                        boo += 1
+
+                    if boo > 3:
+                        break
+
+            score *= (1 - abs(10*inverse_radius))
+            if dist < 3:
+                score = 0.0
+
+            #x = np.cumsum(dx)
+            #y = np.cumsum(dy)
+            #x = np.hstack((x-2, x-1, x, x+1, x+2))
+            #y = np.hstack((y-2, y-1, y, y+1, y+2))
+            #offsets_x = (x * self.pixels_per_meter + self.local_map_offset_x * self.pixels_per_meter).astype(np.uint16)
+            #offsets_y = (y * self.pixels_per_meter + self.local_map_offset_y * self.pixels_per_meter).astype(np.uint16)
+            #where_valid = (offsets_x >= 0) & (offsets_x < self.local_map_flat.shape[0]) & \
+            #          (offsets_y >= 0) & (offsets_y < self.local_map_flat.shape[0])
+            #offsets_x = offsets_x[where_valid]
+            #offsets_y = offsets_y[where_valid]
+            #path_categories = self.local_map_flat[offsets_y, offsets_x]
+            #score = np.sum((path_categories == 1).astype(np.float32)) * (1 - abs(inverse_radius)) / (1 + np.sum(path_categories == 2))
             #score = np.sum((path_categories == 1).astype(np.float32) * np.arange(path_categories.shape[0]) ** 2) * (1 - abs(inverse_radius)) / (1 + np.sum(path_categories == 2))
             #print(score, path_categories)
             if score > max_score:
                 max_score = score
                 max_inverse_radius = inverse_radius
-                max_path_categories = path_categories
+                max_path_categories = [] # path_categories
 
         self.plan_inverse_radius = max_inverse_radius
         rospy.loginfo("score: %f invradius: %f path_categories: %s" % (max_score, max_inverse_radius, str(max_path_categories)))
@@ -157,20 +223,26 @@ class AutopilotNode(object):
             display_image[offsets_y, offsets_x] = len(self.categories)
 
             # plot steering target
-            scale = np.linspace(0.0, 100.0, 200)
+            scale = np.linspace(0.0, 100.0, 25)
             dscale = np.diff(scale)
             angles = self.local_map_yaw + np.arange(scale.shape[0]) * dscale[0] * self.plan_inverse_radius
             dx = dscale * np.cos(angles[1:])
             dy = dscale * np.sin(angles[1:])
-            x = np.cumsum(dx)
-            y = np.cumsum(dy)
-            offsets_x = (x * self.pixels_per_meter + self.local_map_offset_x * self.pixels_per_meter).astype(np.uint16)
-            offsets_y = (y * self.pixels_per_meter + self.local_map_offset_y * self.pixels_per_meter).astype(np.uint16)
-            where_valid = (offsets_x >= 0) & (offsets_x < self.local_map_flat.shape[0]) & \
-                      (offsets_y >= 0) & (offsets_y < self.local_map_flat.shape[0])
-            offsets_x = offsets_x[where_valid]
-            offsets_y = offsets_y[where_valid]
-            display_image[offsets_y, offsets_x] = len(self.categories)
+            xs = np.cumsum(dx)
+            ys = np.cumsum(dy)
+            for x, y in zip(xs, ys):
+                center_x = (x * self.pixels_per_meter + self.local_map_offset_x * self.pixels_per_meter).astype(np.uint16)
+                center_y = (y * self.pixels_per_meter + self.local_map_offset_y * self.pixels_per_meter).astype(np.uint16)
+                if center_y - self.mask_half_dim > 0 and \
+                    center_x - self.mask_half_dim > 0 and \
+                    center_y + self.mask_half_dim < display_image.shape[0] and \
+                    center_x + self.mask_half_dim < display_image.shape[1]:
+                    display_image[
+                        int(center_y - self.mask_half_dim/4) : int(center_y + self.mask_half_dim/4),
+                        int(center_x - self.mask_half_dim/4) : int(center_x + self.mask_half_dim/4)
+                    ] = len(self.categories)
+                #where_valid = (offsets_x >= 0) & (offsets_x < self.local_map_flat.shape[0]) & \
+                #          (offsets_y >= 0) & (offsets_y < self.local_map_flat.shape[0])
 
             # plot steering target
             scale = np.linspace(0.0, 100.0, 50)
@@ -202,6 +274,10 @@ class AutopilotNode(object):
             # colorize map
 
             display_image_color = self.color_map[display_image[::-1, :]]
+
+            if self.pub_image.get_num_connections() > 0:
+                msg_image = cv2_to_imgmsg(display_image_color, encoding = "bgr8")
+                self.pub_image.publish(msg_image)
 
             if DEBUG:
                 cv2.imshow("autopilot", display_image_color)

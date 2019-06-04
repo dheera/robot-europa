@@ -37,7 +37,7 @@ class IPM(object):
         yaw = self.camera["rotation"][2]
         hfov = self.camera["hfov"] * 3.141592653589/180.0
         vfov = self.camera["vfov"] * 3.141592653589/180.0
-        camera_height = 1.5
+        camera_height = self.camera["height"]
 
         theta = - np.arctan(2*(grid_h/shape[1] - 0.5 - yaw/vfov/2) * np.tan(hfov/2)) * math.cos(tilt)
         phi = np.arctan(2*(grid_v/shape[0] - 0.5 + tilt/vfov/2) * np.tan(vfov/2))
