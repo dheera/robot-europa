@@ -33,7 +33,7 @@ if __name__ == "__main__":
     param_topic_command = rospy.get_param("~topic_command", "command")
     param_topic_target = rospy.get_param("~topic_target", "target")
     param_topic_angle = rospy.get_param("~topic_angle", "/vehicle/steering_wheel_angle")
-    param_max_power = rospy.get_param("~max_power", 300)
+    param_max_power = rospy.get_param("~max_power", 700)
 
     pub_command = rospy.Publisher(param_topic_command, Int16, queue_size = 1)
     pub_pid = rospy.Publisher("pid", Point, queue_size = 1)
@@ -42,7 +42,9 @@ if __name__ == "__main__":
     sub_angle = rospy.Subscriber(param_topic_angle, Float32, on_angle)
     sub_target = rospy.Subscriber(param_topic_target, Float32, on_target)
 
-    feedback = PID(KP = 40.0, KI = 0.0, KD = 0.0, I_LIMIT = 20.0)
+    #feedback = PID(KP = 60.0, KI = 120.0, KD = 10.0, I_LIMIT = 10.0)
+    feedback = PID(KP = 60.0, KI = 500.0, KD = 3.0, I_LIMIT = 0.5)
+    #feedback = PID(KP = 100.0, KI = .0, KD = 0.0, I_LIMIT = 1.0)
 
     rospy.loginfo("spin")
 
