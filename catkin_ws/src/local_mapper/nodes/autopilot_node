@@ -63,7 +63,7 @@ class AutopilotNode(object):
         # publishers
 
         self.pub_steering_wheel_target = rospy.Publisher(
-            "%s/steering_wheel_target" % ns_vehicle,
+            "/steering/target",
             Float32, queue_size = 1
         )
 
@@ -129,7 +129,7 @@ class AutopilotNode(object):
         scale = np.linspace(0.0, 100.0, 25)
         dscale = np.diff(scale)
 
-        for inverse_radius in np.linspace(-0.01, 0.01, 100):
+        for inverse_radius in np.linspace(-0.005, 0.005, 50):
             angles = self.local_map_yaw + np.arange(scale.shape[0]) * dscale[0] * inverse_radius
             dx = dscale * np.cos(angles[1:])
             dy = dscale * np.sin(angles[1:])

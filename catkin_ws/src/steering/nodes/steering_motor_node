@@ -11,6 +11,8 @@ from roboteq_steering import RoboteqSteering
 
 def on_command(msg):
     global rs
+    print("on_command")
+    print(msg)
     rs.command(msg.data)
 
 if __name__ == "__main__":
@@ -18,7 +20,7 @@ if __name__ == "__main__":
 
     rospy.loginfo("init")
 
-    param_device = rospy.get_param("~device", "/dev/ttyTHS1")
+    param_device = rospy.get_param("~device", "/dev/roboteq0")
     param_baudrate = rospy.get_param("~baudrate", 115200)
 
     sub_command = rospy.Subscriber("command", Int16, on_command)

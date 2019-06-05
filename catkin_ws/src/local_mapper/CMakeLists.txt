@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(steering)
+project(local_mapper)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy
@@ -18,10 +18,14 @@ include_directories(
 )
 
 catkin_install_python(PROGRAMS
-  nodes/steering_motor_node
-  nodes/steering_feedback_node
-  nodes/roboteq_steering.py
-  nodes/pid.py
+  nodes/local_mapper_singleshot_node
+  nodes/local_mapper_cumulative_node
+  nodes/ipm.py
+  nodes/numpy_extra.py
+  nodes/camera_ethernet_imx291.json
+  nodes/transformations.py
+  nodes/ground_project_node
+  nodes/cv_bridge.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

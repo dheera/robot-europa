@@ -1,18 +1,37 @@
 <launch>
 
     <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
-    <node name="web_video_server" pkg="web_video_server" type="web_video_server">
+    <node name="web_video_server" pkg="web_video_server" type="web_video_server"></node>
+    <node ns="system" name="system_stats_node" pkg="system_stats" type="system_stats_node" respawn="true" respawn_delay="2"></node>
+    <node ns="sound" name="sound_node" pkg="sound" type="sound_node" respawn="true" respawn_delay="2"></node>
+
+    <node ns="imu" name="bno055_i2c_node" pkg="imu_bno055" type="bno055_i2c_node" respawn="true" respawn_delay="2">
+        <param name="device" type="string" value="/dev/i2c-8"/>
     </node>
 
+    <node ns="camera_front" name="segmentation_node" pkg="semantic_segmentation" type="segmentation_node" respawn="true" respawn_delay="2">
+    </node>
+
+    <!-- <node ns="camera_front" name="segmentation_node_1" pkg="semantic_segmentation" type="segmentation_node" respawn="true" respawn_delay="2">
+      <param name="model" type="string" value="mnv2_coco2017_driving_513"/>
+      <remap from="semantic" to="semantic_1"/>
+      <remap from="semantic_color" to="semantic_color_1"/>
+    </node> -->
+
     <node ns="steering" name="steering_motor_node" pkg="steering" type="steering_motor_node" respawn="true" respawn_delay="2">
+        <param name="device" type="string" value="/dev/roboteq0"/>
+    </node>
+
+    <node ns="steering" name="steering_feedback_node" pkg="steering" type="steering_feedback_node" respawn="true" respawn_delay="2">
+    </node>
+
+
+    <node name="local_mapper_singleshot_node" pkg="local_mapper" type="local_mapper_singleshot_node" respawn="true" respawn_delay="1">
     </node>
 
     <node ns="vehicle" name="ford_can_node" pkg="ford_can" type="ford_can_node" respawn="true" respawn_delay="2">
     </node>
-
-    <node ns="system" name="system_stats_node" pkg="system_stats" type="system_stats_node" respawn="true" respawn_delay="2">
-    </node>
-
+<!--
     <node name="camera" type="usb_cam_node" pkg="usb_cam" respawn="true" respawn_delay="2">
       <rosparam>
         video_device: /dev/video0
@@ -22,14 +41,10 @@
         framerate: 30
       </rosparam>
     </node>
-
-    <node name="camera_t" type="throttle" pkg="topic_tools" args="messages /camera/image_raw 2 /camera_t/image_raw">
-    </node>
-
-<!--
-    <node respawn="true" respawn_delay="2" name="nmea_serial_driver" pkg="nmea_navsat_driver" type="nmea_serial_driver">
-    </node>
 -->
+
+    <node name="camera_front_t" type="throttle" pkg="topic_tools" args="messages /camera_front/image_raw 2 /camera_front_t/image_raw">
+    </node>
 
   <node pkg="ublox_gps" type="ublox_gps" name="gps"
         output="screen" 
@@ -39,10 +54,22 @@
     <rosparam command="load" file="$(find ublox_gps)/config/basic.yaml" />
   </node>
 
-    <node ns="sound" name="sound_node" pkg="sound" type="sound_node" respawn="true" respawn_delay="2">
-    </node>
+  <node ns="shutdown" name="shutdown_node" pkg="shutdown" type="shutdown_node" respawn="true" respawn_delay="2"></node>
 
-    <node ns="shutdown" name="shutdown_node" pkg="shutdown" type="shutdown_node" respawn="true" respawn_delay="2">
-    </node>
+  <!-- Set this to your camera's name -->
+  <arg name="cam_name" value="camera_front" />
+
+  <!-- Start the GSCAM node -->
+  <!-- <env name="GSCAM_CONFIG" value="rtspsrc location=rtsp://admin:qncbphoy$1Aa@192.168.1.80:554/cam/realmonitor?channel=1&amp;subtype=1 ! decodebin ! videoconvert sync=false"/> -->
+
+  <env name="GSCAM_CONFIG" value="rtspsrc location=rtsp://admin:qncbphoy$1Aa@192.168.1.80:554/cam/realmonitor?channel=1&amp;subtype=0 latency=0 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert sync=false"/>
+
+  <!-- <env name="GSCAM_CONFIG" value="rtspsrc location=rtsp://admin:qncbphoy$1Aa@192.168.1.80:554/cam/realmonitor?channel=1&amp;subtype=0 latency=0 ! rtph265depay ! h265parse ! omxh265dec ! videoconvert sync=false"/> -->
+
+  <node pkg="gscam" type="gscam" name="$(arg cam_name)" respawn="true" respawn_delay="2">
+    <param name="camera_name" value="$(arg cam_name)" />
+    <param name="sync_sink" value="false" type="bool" />
+    <remap from="camera/image_raw" to="$(arg cam_name)/image_raw" />
+  </node>
 
 </launch>
