@@ -88,6 +88,8 @@ class LocalMapperNode(object):
         self.cur_yaw = 0.0
         self.velocity_x = 0.0
 
+        self.poses = np.zeros((100, 3), dtype = np.float64)
+
         # deals with inverse projection of the camera
         self.ipm = IPM(pixels_per_meter = self.pixels_per_meter, configuration = configuration)
 
@@ -123,13 +125,18 @@ class LocalMapperNode(object):
             self.cutoff_top = int(logits.shape[0] * 0.4)
             self.cutoff_bottom = int(logits.shape[0] * 0.8)
 
+        then_index = int(msg.header.stamp.nsecs / 1e7)
+        then_x = self.poses[then_index, 0]
+        then_y = self.poses[then_index, 1]
+        then_yaw = self.poses[then_index, 2]
+
         logits = logits[self.cutoff_top:self.cutoff_bottom,:]
         ground_plane_r = self.ground_plane_r[self.cutoff_top:self.cutoff_bottom,:]
         ground_plane_theta = self.ground_plane_theta[self.cutoff_top:self.cutoff_bottom,:]
 
         # transform convert the ground_plane from base_link to map space coordinates
-        values_y = self.cur_y + ground_plane_r * np.sin(ground_plane_theta + self.cur_yaw)
-        values_x = self.cur_x + ground_plane_r * np.cos(ground_plane_theta + self.cur_yaw)
+        values_y = then_y + ground_plane_r * np.sin(ground_plane_theta + then_yaw)
+        values_x = then_x + ground_plane_r * np.cos(ground_plane_theta + then_yaw)
 
         # transform map space coordinates to pixel values on the local occupancy grid
         values_py = (values_y * self.pixels_per_meter + self.local_map.shape[0] / 2.0).astype(np.int16)
@@ -207,6 +214,8 @@ class LocalMapperNode(object):
         shift_py = int(shift_y * self.pixels_per_meter)
         self.cur_x -= shift_x
         self.cur_y -= shift_y
+        self.poses[:,0] -= shift_x
+        self.poses[:,1] -= shift_y
         self.local_map = npe.shift_2d_replace(self.local_map, -shift_px, -shift_py, 0)
         self.local_map_flat = npe.shift_2d_replace(self.local_map_flat, -shift_px, -shift_py, 0)
         self.lock.release()
@@ -218,11 +227,19 @@ class LocalMapperNode(object):
         while not rospy.is_shutdown():
             seq += 1
             rate.sleep()
+
+            t = rospy.Time.now()
+
             if not self.is_initialized:
                 continue
 
             self.cur_x += self.velocity_x * 0.01 * np.cos(self.cur_yaw)
             self.cur_y += self.velocity_x * 0.01 * np.sin(self.cur_yaw)
+
+            indexes = (int(t.nsecs / 1e7) + np.arange(5)) % 100
+            self.poses[indexes, 0] = self.cur_x
+            self.poses[indexes, 1] = self.cur_y
+            self.poses[indexes, 2] = self.cur_yaw
 
             if seq % 100 != 0:
                 continue
