@@ -1,22 +1,28 @@
-#!/bin/sh -e
-#
-# rc.local
-#
-# This script is executed at the end of each multiuser runlevel.
-# Make sure that the script will "exit 0" on success or any other
-# value on error.
-#
-# In order to enable or disable this script just change the execution
-# bits.
-#
-# By default this script does nothing.
+#!/bin/bash
 
-screen -d -m /etc/rc.local.delay60
+screen -d -m /etc/rc.local.delayed
 
-screen -d -m /home/nvidia/bin/wifi-powersave-loop
+# canbus
 
-modprobe mttcan can can_gw can_bcm can_raw can_dev slcan vcan
-sleep 2
-ip link set can0 up type can bitrate 500000
+sudo busybox devmem 0x0c303000 32 0x0000C400
+sudo busybox devmem 0x0c303008 32 0x0000C458
+sudo busybox devmem 0x0c303010 32 0x0000C400
+sudo busybox devmem 0x0c303018 32 0x0000C458
+#modprobe mttcan can can_gw can_bcm can_raw can_dev slcan vcan
+modprobe can
+modprobe can_raw
+modprobe mttcan
+ip link set can0 type can bitrate 500000 dbitrate 2000000 berr-reporting on fd on
+ip link set can1 type can bitrate 500000 dbitrate 2000000 berr-reporting on fd on
+ip link set up can0
+ip link set up can1
+
+#ip link set can0 up type can bitrate 500000
+#ip link set can1 up type can bitrate 500000
+
+ln -s /dev/ttyTHS0 /dev/roboteq0
+chmod 660 /dev/ttyTHS0
+chmod 4755 /sbin/shutdown
+pacmd set-default-sink alsa_output.usb-Generic_USB2.0_Device_20130100ph0-00.stereo-fallback
 
 exit 0
