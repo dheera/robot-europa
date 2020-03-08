@@ -9,7 +9,7 @@ from std_msgs.msg import String, Int8
 
 def on_ignition_switch(msg):
     if msg.data <= 2:
-        rospy.logwarn("vehicle turned off, shutting down")
+        rospy.logwarn("vehicle turned off, shutting down in 10 seconds")
         time.sleep(10)
         os.system("shutdown -h now")
 
