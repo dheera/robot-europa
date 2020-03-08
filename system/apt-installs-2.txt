@@ -2,14 +2,14 @@ autossh
 can-utils
 ffmpeg
 libi2c-dev
+python3-catkin-pkg-modules
+python3-numpy
 python3-pil
 python3-pip
+python3-rospkg-modules
 python3-scipy
 python-pip
 screen
 htop
 espeak
 vim
-nginx
-nodejs
-npm
