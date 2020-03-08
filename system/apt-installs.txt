@@ -3,6 +3,7 @@ can-utils
 espeak
 ffmpeg
 htop
+isc-dhcp-server
 libi2c-dev
 nginx
 nodejs
